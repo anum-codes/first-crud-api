@@ -1,7 +1,36 @@
+import sqlite3
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field
 
 app = FastAPI()
+
+#function to initialize the database and table
+def init_db():
+    conn = sqlite3.connect("tasks.db")
+    cursor = conn.cursor()
+
+    #Create tasks table if it doesn't exist
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS tasks(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    done BOOLEAN DEFAULT 0
+    )
+""")
+
+    #Seed three example tasks only if the table is empty
+    cursor.execute("SELECT COUNT(*) FROM tasks")
+    count = cursor.fetchone()[0]
+
+    if count == 0:
+        cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Buy Milk, 0"))
+        cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Pay Bills", 1))
+        cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Learn FastAPI",0))
+        conn.commit()
+    conn.close()
+
+#Run Initialization on startup
+init_db
 
 # Stage 1: Root & Health Endpoints
 @app.get("/")
