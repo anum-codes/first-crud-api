@@ -23,14 +23,14 @@ def init_db():
     count = cursor.fetchone()[0]
 
     if count == 0:
-        cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Buy Milk, 0"))
+        cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Buy Milk", 0))
         cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Pay Bills", 1))
         cursor.execute("INSERT INTO tasks (title,done) VALUES (?,?)", ("Learn FastAPI",0))
         conn.commit()
     conn.close()
 
 #Run Initialization on startup
-init_db
+init_db()
 
 # Stage 1: Root & Health Endpoints
 @app.get("/")
@@ -45,65 +45,69 @@ def root():
 def health_check():
     return {"status": "ok"}
 
-# Stage 2: In-memory "database" pre-filled with 3 example tasks
-tasks = [
-    {"id": 1, "title": "Buy milk", "done": False},
-    {"id": 2, "title": "Complete Stage 2", "done": True},
-    {"id": 3, "title": "Learn FastAPI", "done": False},
-]
 
 # Get all tasks
 @app.get("/tasks")
 def get_tasks():
-    return tasks
+    conn = sqlite3.connect("tasks.db")
+    conn.row_factory = sqlite3.Row    #accessing columns by names
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM tasks")
+    rows = cursor.fetchall()
+    conn.close
+
+    #convert database rows into dictionaries and normalize 'done' to boolean
+    tasks_list = []
+    for row in rows:
+        tasks_list.append({
+            "id":row["id"],
+            "title":row["title"],
+            "done":bool(row["done"])
+        })
+    return tasks_list
 
 # Get single task by ID
 @app.get("/tasks/{task_id}")
 def get_task(task_id: int):
-    for task in tasks:
-        if task["id"] == task_id:
-            return task
-    raise HTTPException(status_code=404, detail={"error": f"Task {task_id} not found"})
+    conn = sqlite3.connect("tasks.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
 
-#Stage 3: Create — POST a New Task
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+    conn.close()
 
-class TaskCreate(BaseModel):
-    title: str = Field(..., min_length=1)
-
-# Create task endpoint
-@app.post("/tasks", status_code=201)
-def create_task(task_data: TaskCreate):
-    # Calculate next ID cleanly
-    new_id = max([t["id"] for t in tasks], default=0) + 1
-    new_task = {
-        "id": new_id,
-        "title": task_data.title,
-        "done": False
+    if row is None:
+        raise HTTPException(status_code=404, detail={"error": "Task not found"})
+    
+    return {
+        "id":row["id"],
+        "title":row["title"],
+        "done":bool(row["done"])
     }
-    tasks.append(new_task)
-    return new_task
 
-#Stage 4: Update & Delete
+# #Stage 3: Create — POST a New Task
 
-class TaskUpdate(BaseModel):
-    title: str = Field(..., min_length=1)
-    done: bool
+# class TaskCreate(BaseModel):
+#     title: str = Field(..., min_length=1)
 
-# Update endpoint
-@app.put("/tasks/{task_id}")
-def update_task(task_id: int, task_data: TaskUpdate):
-    for task in tasks:
-        if task["id"] == task_id:
-            task["title"] = task_data.title
-            task["done"] = task_data.done
-            return task
-    raise HTTPException(status_code=404, detail={"error": f"Task {task_id} not found"})
+# # Create task endpoint
+# @app.post("/tasks", status_code=201)
+# def create_task(task_data: TaskCreate):
+#     pass
 
-# Delete endpoint
-@app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: int):
-    for index, task in enumerate(tasks):
-        if task["id"] == task_id:
-            tasks.pop(index)
-            return Response(status_code=204)
-    raise HTTPException(status_code=404, detail={"error": f"Task {task_id} not found"})
+# #Stage 4: Update & Delete
+
+# class TaskUpdate(BaseModel):
+#     pass
+
+# # Update endpoint
+# @app.put("/tasks/{task_id}")
+# def update_task(task_id: int, task_data: TaskUpdate):
+#     pass
+
+# # Delete endpoint
+# @app.delete("/tasks/{task_id}", status_code=204)
+# def delete_task(task_id: int):
+#     pass
