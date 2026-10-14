@@ -32,7 +32,7 @@ def init_db():
 #Run Initialization on startup
 init_db()
 
-# Stage 1: Root & Health Endpoints
+
 @app.get("/")
 def root():
     return {
@@ -87,7 +87,6 @@ def get_task(task_id: int):
         "done":bool(row["done"])
     }
 
-#Stage 3: Create — POST a New Task
 
 class TaskCreate(BaseModel):
     title: str
@@ -121,17 +120,66 @@ def create_task(task: TaskCreate):
         "done":bool(row["done"])
     }
 
-# #Stage 4: Update & Delete
 
-# class TaskUpdate(BaseModel):
-#     pass
 
-# # Update endpoint
-# @app.put("/tasks/{task_id}")
-# def update_task(task_id: int, task_data: TaskUpdate):
-#     pass
+class TaskUpdate(BaseModel):
+    title:str
+    done:bool
 
-# # Delete endpoint
-# @app.delete("/tasks/{task_id}", status_code=204)
-# def delete_task(task_id: int):
-#     pass
+# Update endpoint
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, task: TaskUpdate):
+    if not task.title or not task.title.strip():
+        raise HTTPException(status_code=400, detail={"error":"title cannot be empty"})
+
+    conn = sqlite3.connect("tasks.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    #Check if task exists first
+    cursor.execute("SELECT * FROM tasks WHERE id = ? ", (task_id,))
+    existing = cursor.fetchone()
+
+    if existing is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail={"error": "Task not found"})
+
+    #Execute SQL update with parameterized query
+    cursor.execute(
+        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+        (task.title.strip(), int(task.done), task_id)
+    )
+    conn.commit()
+
+    # Fetch and return updated task
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "done": bool(row["done"])
+    }
+
+
+# Delete a task
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int):
+    conn = sqlite3.connect("tasks.db")
+    cursor = conn.cursor()
+    
+    # Check if task exists
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    existing = cursor.fetchone()
+    
+    if existing is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail={"error": "Task not found"})
+        
+    # Execute SQL delete
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+    
+    return Response(status_code=204)
