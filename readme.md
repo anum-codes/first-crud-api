@@ -1,6 +1,6 @@
-# Task API - FlyRank Backend Internship (Week 2)
+# Task API - FlyRank Backend Internship (Week 3 - Database Persistence)
 
-A lightweight, robust CRUD (Create, Read, Update, Delete) REST API built using **Python** and **FastAPI**, featuring in-memory data storage, automatic Pydantic request validation, and interactive documentation via Swagger UI.
+A robust, persistent REST CRUD (Create, Read, Update, Delete) API built using Python, FastAPI, and SQLite3, featuring parameterized SQL queries, automatic database seeding, and interactive documentation via Swagger UI.
 
 ---
 
@@ -8,33 +8,24 @@ A lightweight, robust CRUD (Create, Read, Update, Delete) REST API built using *
 
 Make sure you have Python 3.10+ installed on your system.
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-username/your-repo-name.git
-   cd your-repo-name
-   ```
+1. Clone the repository:
+   git clone https://github.com/anum-codes/first-crud-api.git
+   cd first-crud-api
 
-2. **Create and activate a virtual environment:**
-   ```bash
+2. Create and activate a virtual environment:
    python -m venv venv
    # On Windows:
    venv\Scripts\activate
    # On Mac/Linux:
    source venv/bin/activate
-   ```
 
-3. **Install dependencies:**
-   ```bash
+3. Install dependencies:
    pip install fastapi uvicorn pydantic
-   ```
 
-4. **Run the server:**
-   *(Note: Replace `main` with your actual file name if it differs, e.g., `firstcrudapi:app`)*
-   ```bash
+4. Run the server:
    uvicorn main:app --reload
-   ```
 
-5. Open your browser and navigate to **`http://localhost:8000/docs`** to view and test the Swagger UI interface.
+5. Open your browser and navigate to http://localhost:8000/docs to view and test the Swagger UI interface.
 
 ---
 
@@ -42,49 +33,42 @@ Make sure you have Python 3.10+ installed on your system.
 
 | HTTP Method | Endpoint Path | Description | Status Codes |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/` | Returns general API information and available endpoints | `200 OK` |
-| **GET** | `/health` | Server health check endpoint | `200 OK` |
-| **GET** | `/tasks` | Retrieves all tasks stored in memory | `200 OK` |
-| **GET** | `/tasks/{id}` | Retrieves a single specific task by its ID | `200 OK`, `404 Not Found` |
-| **POST** | `/tasks` | Creates a new task with validation | `201 Created`, `422 Unprocessable Entity` |
-| **PUT** | `/tasks/{id}` | Updates an existing task's title and completion status | `200 OK`, `404 Not Found` |
-| **DELETE** | `/tasks/{id}` | Deletes a task by its ID | `204 No Content`, `404 Not Found` |
+| GET | /tasks | Retrieves all tasks stored in the SQLite database | 200 OK |
+| GET | /tasks/{id} | Retrieves a single specific task by its ID using parameterized queries | 200 OK, 404 Not Found |
+| POST | /tasks | Creates a new task with validation and inserts it via SQL | 201 Created, 400 Bad Request |
+| PUT | /tasks/{id} | Updates an existing task's title and completion status | 200 OK, 400 Bad Request, 404 Not Found |
+| DELETE | /tasks/{id} | Deletes a task from the database by its ID | 204 No Content, 404 Not Found |
 
 ---
 
-## 💻 Sample `curl -i` Output
+## 🗄️ Database Architecture & Persistence
 
-Testing the root endpoint (`GET /`):
+### Why SQLite?
+SQLite was chosen for this project because it is a serverless, zero-configuration database that lives entirely within a single file. It requires no separate database server installation, making it lightweight, fast, and ideal for local development and lightweight backend applications. Most importantly, it ensures persistence—meaning your task data outlives your program and remains intact across server restarts.
 
-```bash
-curl.exe -i "http://localhost:8000/"
-```
-
-**Response:**
-```http
-HTTP/1.1 200 OK
-date: Sat, 10 Oct 2026 21:25:00 GMT
-server: uvicorn
-content-type: application/json
-content-length: 74
-
-{
-  "name": "Task API",
-  "version": "1.0",
-  "endpoints": ["/tasks"]
-}
-```
+### Where the Database Lives
+* File Name: tasks.db
+* Location: Created automatically in the root directory of the project the first time the server starts up.
+* Git Handling: The database file is typically included in .gitignore so that each fresh clone initializes its own clean database and seeds the initial examples automatically.
 
 ---
 
-## 📸 Swagger UI Screenshot
+## 📊 Stage 4: Exploring SQLite by Hand
 
-Below is an interactive view of the API documentation generated automatically by FastAPI at `/docs`:
+During Stage 4, the database was explored directly using DB Browser for SQLite to verify that the API and the database share a single source of truth.
 
-![Swagger UI Screenshot](./docs/swagger-screenshot.png)
-*(Tip: Replace `./docs/swagger-screenshot.png` with the actual path to your saved screenshot file in your repo!)*
+Example SQL Query Run:
+SELECT COUNT(*) FROM tasks;
+
+* Result: It returned the total number of active rows present in the tasks table (e.g., 3 after the initial seeding).
 
 ---
 
-## 💡 Notes on In-Memory Storage
-As per the assignment requirements, data is stored strictly in memory via Python lists and dictionaries. Restarting the FastAPI server will reset the dataset back to its default pre-filled example tasks.
+## 📸 Screenshots
+
+### 1. Database View (DB Browser for SQLite)
+Here is a view of the tasks table open directly inside DB Browser for SQLite, showing the persisted rows:
+![DB Browser Screenshot](./db-browser-sqlite.png)
+
+### 2. Swagger UI
+![Swagger UI Screenshot](./image.png)
