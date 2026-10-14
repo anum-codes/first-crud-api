@@ -87,15 +87,39 @@ def get_task(task_id: int):
         "done":bool(row["done"])
     }
 
-# #Stage 3: Create — POST a New Task
+#Stage 3: Create — POST a New Task
 
-# class TaskCreate(BaseModel):
-#     title: str = Field(..., min_length=1)
+class TaskCreate(BaseModel):
+    title: str
 
-# # Create task endpoint
-# @app.post("/tasks", status_code=201)
-# def create_task(task_data: TaskCreate):
-#     pass
+# Create task endpoint
+@app.post("/tasks", status_code=201)
+def create_task(task: TaskCreate):
+    #validate title for empty and whitespace
+    if not task.title or not task.title.strip():
+        raise HTTPException(status_code=400, detail={"error":"Title cannot be empty"})
+
+    conn = sqlite3.connect("tasks.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    #Insert task in sqlite using parameterized query
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?,?)", (task.title.strip(), 0))
+    conn.commit()
+
+    #Get the auto assigned id of new task
+    new_task_id = cursor.lastrowid
+
+    #Fetch the new created row to return it
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (new_task_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "done":bool(row["done"])
+    }
 
 # #Stage 4: Update & Delete
 
